@@ -1,10 +1,10 @@
-import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server.js';
 
 import * as helpers from './helpers';
 
 import type { MaybePromise } from './types/maybe-promise';
 import type { UnionToIntersection } from './types/union-to-intersection';
-import type { NextRequest, NextFetchEvent } from 'next/server';
+import type { NextRequest, NextFetchEvent } from 'next/server.js';
 
 /**
  * A function that forwards the request to the next handler in the chain.

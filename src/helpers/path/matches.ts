@@ -1,5 +1,5 @@
 import type { MaybeArray } from '../../types/maybe-array';
-import type { NextRequest } from 'next/server';
+import type { NextRequest } from 'next/server.js';
 
 /**
  * Checks whether the request's pathname matches any of the given patterns.
