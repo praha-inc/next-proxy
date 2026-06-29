@@ -1,0 +1,69 @@
+{
+  "name": "@praha/next-proxy",
+  "version": "0.0.0",
+  "description": "A lightweight utility for chaining Next.js proxy",
+  "keywords": [
+    "javascript",
+    "typescript",
+    "nextjs",
+    "proxy",
+    "middleware"
+  ],
+  "homepage": "https://github.com/praha-inc/next-proxy/blob/main/README.md",
+  "bugs": {
+    "url": "https://github.com/praha-inc/next-proxy/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/praha-inc/next-proxy.git"
+  },
+  "license": "MIT",
+  "author": "PrAha, Inc.",
+  "sideEffects": false,
+  "type": "module",
+  "exports": {
+    "require": {
+      "types": "./dist/cjs/index.d.cts",
+      "default": "./dist/cjs/index.cjs"
+    },
+    "import": {
+      "types": "./dist/esm/index.d.ts",
+      "default": "./dist/esm/index.js"
+    }
+  },
+  "main": "./dist/cjs/index.cjs",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/cjs/index.d.cts",
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "rslib build",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "lint:code": "oxlint",
+    "lint:type": "tsc --noEmit",
+    "version": "changeset",
+    "version:apply": "changeset version",
+    "version:publish": "changeset publish",
+    "version:prepublish": "pkg-pr-new publish --pnpm --compact"
+  },
+  "devDependencies": {
+    "@changesets/changelog-github": "0.7.0",
+    "@changesets/cli": "2.31.0",
+    "@praha/oxlint-config-standard": "1.0.0-beta.7",
+    "@rslib/core": "0.23.1",
+    "@tsconfig/strictest": "2.0.8",
+    "oxlint": "1.71.0",
+    "oxlint-tsgolint": "0.23.0",
+    "pkg-pr-new": "0.0.75",
+    "typescript": "6.0.3",
+    "vitest": "4.1.9"
+  },
+  "packageManager": "pnpm@11.9.0",
+  "publishConfig": {
+    "provenance": true
+  }
+}
