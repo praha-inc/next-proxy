@@ -48,7 +48,7 @@ export type ProxyHandler<Context extends Record<string, unknown> = {}>
  * @template Context - Shape of the shared context object passed through the proxy chain.
  */
 export type Proxy<Context extends Record<string, unknown> = {}>
-  = (options: RequiredProxyOptions & Partial<OptionalProxyOptions<Context>>) => MaybePromise<NextResponse>;
+  = (request: NextRequest, event: NextFetchEvent, next?: ProxyNext, context?: Partial<Context>) => MaybePromise<NextResponse>;
 
 /**
  * Extracts the `Context` type parameter from a {@link Proxy}.
@@ -162,7 +162,7 @@ export type DefineProxyOptions<Context extends Record<string, unknown> = {}> = {
 export const defineProxy = <Context extends Record<string, unknown> = {}>(
   options: DefineProxyOptions<Context>,
 ): Proxy<Context> => {
-  return ({ request, event, next = defaultNext, context = {} }) => {
+  return (request, event, next = defaultNext, context = {}) => {
     if (!options.filter || options.filter({ request, event, context, helpers })) {
       return options.handler({ request, event, next, context });
     }
@@ -238,10 +238,10 @@ export type DefineProxyChainOptions<Proxies extends Proxy[]> = {
  * ```
  */
 defineProxy.chain = <Proxies extends Proxy[]>(options: DefineProxyChainOptions<Proxies>): Proxy<MergeProxyContexts<Proxies>> => {
-  return async ({ request, event, next = defaultNext, context = {} }) => {
+  return async (request, event, next = defaultNext, context = {}) => {
     if (!options.filter || options.filter({ request, event, context, helpers })) {
       const chain = options.proxies.reduceRight<ProxyNext>((next, proxy) => {
-        return (request) => proxy({ request, event, next, context });
+        return (request) => proxy(request, event, next, context);
       }, next);
 
       return await chain(request);

@@ -15,8 +15,8 @@ describe('defineProxy', () => {
     const proxy = defineProxy({ handler });
 
     test('should call handler for all paths', async () => {
-      await proxy({ request: createRequest('/foo'), event });
-      await proxy({ request: createRequest('/bar'), event });
+      await proxy(createRequest('/foo'), event);
+      await proxy(createRequest('/bar'), event);
 
       expect(handler).toHaveBeenCalledTimes(2);
     });
@@ -30,13 +30,13 @@ describe('defineProxy', () => {
     });
 
     test('should call handler for matching paths', async () => {
-      await proxy({ request: createRequest('/foo'), event });
+      await proxy(createRequest('/foo'), event);
 
       expect(handler).toHaveBeenCalledTimes(1);
     });
 
     test('should not call handler for non-matching paths', async () => {
-      await proxy({ request: createRequest('/bar'), event });
+      await proxy(createRequest('/bar'), event);
 
       expect(handler).not.toHaveBeenCalled();
     });
@@ -48,7 +48,7 @@ describe('defineProxy', () => {
     });
 
     test('should return NextResponse.next() when next is called from handler', async () => {
-      const response = await proxy({ request: createRequest('/foo'), event });
+      const response = await proxy(createRequest('/foo'), event);
 
       expect(response.status).toBe(200);
     });
@@ -61,7 +61,7 @@ describe('defineProxy', () => {
     });
 
     test('should call the specified next when next is called from handler', async () => {
-      const response = await proxy({ request: createRequest('/foo'), event, next });
+      const response = await proxy(createRequest('/foo'), event, next);
 
       expect(next).toHaveBeenCalledTimes(1);
       expect(response.headers.get('custom')).toEqual('test');
@@ -74,7 +74,7 @@ describe('defineProxy', () => {
     const context = { userId: 'user-1' };
 
     test('should pass context to handler', async () => {
-      await proxy({ request: createRequest('/foo'), event, context });
+      await proxy(createRequest('/foo'), event, undefined, context);
 
       expect(handler).toHaveBeenCalledWith({
         request: expect.anything(),
@@ -107,7 +107,7 @@ describe('defineProxy.chain', () => {
     const chained = defineProxy.chain({ proxies: [proxy1, proxy2] });
 
     test('should execute in order starting from the first proxy', async () => {
-      await chained({ request: createRequest('/foo'), event });
+      await chained(createRequest('/foo'), event);
 
       expect(order).toEqual([1, 2]);
     });
@@ -140,7 +140,7 @@ describe('defineProxy.chain', () => {
     const chained = defineProxy.chain({ proxies: [proxy1, proxy2, proxy3] });
 
     test('should merge contexts from different proxies and make them available to subsequent proxies', async () => {
-      await chained({ request: createRequest('/foo'), event });
+      await chained(createRequest('/foo'), event);
 
       expect(receivedContext).toEqual({ userId: 'user-1', role: 'admin' });
     });
@@ -155,13 +155,13 @@ describe('defineProxy.chain', () => {
     });
 
     test('should execute the entire chain for matching paths', async () => {
-      await chained({ request: createRequest('/foo'), event });
+      await chained(createRequest('/foo'), event);
 
       expect(handler).toHaveBeenCalledTimes(1);
     });
 
     test('should skip the entire chain for non-matching paths', async () => {
-      await chained({ request: createRequest('/bar'), event });
+      await chained(createRequest('/bar'), event);
 
       expect(handler).not.toHaveBeenCalled();
     });
@@ -187,7 +187,7 @@ describe('defineProxy.chain', () => {
     const chained = defineProxy.chain({ proxies: [proxy1, proxy2] });
 
     test('should be caught by the first proxy', async () => {
-      const response = await chained({ request: createRequest('/foo'), event });
+      const response = await chained(createRequest('/foo'), event);
 
       expect(response.status).toBe(500);
       expect(await response.text()).toBe('caught');
@@ -211,7 +211,7 @@ describe('defineProxy.chain', () => {
     });
 
     test('should execute the second proxy', async () => {
-      await proxy({ request: createRequest('/account'), event });
+      await proxy(createRequest('/account'), event);
 
       expect(apiGuard).toHaveBeenCalledTimes(0);
       expect(webGuard).toHaveBeenCalledTimes(1);
@@ -246,7 +246,7 @@ describe('defineProxy.chain', () => {
     const chained = defineProxy.chain({ proxies: [innerChain, outerProxy] });
 
     test('should execute all proxies in order', async () => {
-      await chained({ request: createRequest('/foo'), event });
+      await chained(createRequest('/foo'), event);
 
       expect(order).toEqual([1, 2, 3]);
     });
@@ -268,7 +268,7 @@ describe('defineProxy.chain', () => {
     const chained = defineProxy.chain({ proxies: [innerChain, defineProxy({ handler: outerHandler })] });
 
     test('should skip inner chain but still execute outer proxy', async () => {
-      await chained({ request: createRequest('/foo'), event });
+      await chained(createRequest('/foo'), event);
 
       expect(innerHandler).not.toHaveBeenCalled();
       expect(outerHandler).toHaveBeenCalledTimes(1);
@@ -296,7 +296,7 @@ describe('defineProxy.chain', () => {
     const chained = defineProxy.chain({ proxies: [innerChain, outerProxy] });
 
     test('should propagate context set in inner chain to outer proxy', async () => {
-      await chained({ request: createRequest('/foo'), event });
+      await chained(createRequest('/foo'), event);
 
       expect(receivedContext).toEqual({ fromInner: 'inner-value' });
     });
