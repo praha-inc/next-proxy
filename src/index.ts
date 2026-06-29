@@ -1,13 +1,10 @@
 import { NextResponse } from 'next/server';
 
-import type { MaybeArray } from './types/maybe-array';
+import * as helpers from './helpers';
+
 import type { MaybePromise } from './types/maybe-promise';
 import type { UnionToIntersection } from './types/union-to-intersection';
 import type { NextRequest, NextFetchEvent } from 'next/server';
-
-const toArray = <T>(value?: MaybeArray<T>): T[] => {
-  return value ? (Array.isArray(value) ? value : [value]) : [];
-};
 
 /**
  * A function that forwards the request to the next handler in the chain.
@@ -69,21 +66,7 @@ export type Proxy<Context extends Record<string, unknown> = {}>
 export type InferProxyContext<P> = P extends Proxy<infer C> ? C : never;
 
 /** The collection of built-in helper utilities exposed to filter functions. */
-export type ProxyHelpers = {
-  path: {
-    matches: (request: NextRequest, pattern: MaybeArray<string | RegExp>) => boolean;
-  };
-};
-
-const helpers: ProxyHelpers = {
-  path: {
-    matches: (request, pattern) => {
-      return toArray(pattern).some((value) => {
-        return typeof value === 'string' ? value === request.nextUrl.pathname : request.nextUrl.pathname.match(value) !== null;
-      });
-    },
-  },
-};
+export type ProxyHelpers = typeof helpers;
 
 /**
  * Options passed to the `filter` callback of {@link DefineProxyOptions} and
