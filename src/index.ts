@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import type { MaybeArray } from './types/maybe-array';
 import type { MaybePromise } from './types/maybe-promise';
+import type { UnionToIntersection } from './types/union-to-intersection';
 import type { NextRequest, NextFetchEvent } from 'next/server';
 
 const toArray = <T>(value?: MaybeArray<T>): T[] => {
@@ -52,6 +53,21 @@ export type ProxyHandler<Context extends Record<string, unknown> = {}>
 export type Proxy<Context extends Record<string, unknown> = {}>
   = (options: RequiredProxyOptions & Partial<OptionalProxyOptions<Context>>) => MaybePromise<NextResponse>;
 
+/**
+ * Extracts the `Context` type parameter from a {@link Proxy}.
+ *
+ * @template P - A {@link Proxy} type.
+ *
+ * @example
+ * ```ts
+ * import type { Proxy, InferProxyContext } from '@praha/next-proxy';
+ *
+ * type CustomProxy = Proxy<{ userId: string }>;
+ * type Context = InferProxyContext<CustomProxy>; // { userId: string }
+ * ```
+ */
+export type InferProxyContext<P> = P extends Proxy<infer C> ? C : never;
+
 /** The collection of built-in helper utilities exposed to filter functions. */
 export type ProxyHelpers = {
   path: {
@@ -70,7 +86,8 @@ const helpers: ProxyHelpers = {
 };
 
 /**
- * Options passed to the `filter` callback of {@link DefineProxyOptions}.
+ * Options passed to the `filter` callback of {@link DefineProxyOptions} and
+ * {@link DefineProxyChainOptions}.
  *
  * @template Context - Shape of the shared context object.
  */
@@ -165,6 +182,86 @@ export const defineProxy = <Context extends Record<string, unknown> = {}>(
   return ({ request, event, next = defaultNext, context = {} }) => {
     if (!options.filter || options.filter({ request, event, context, helpers })) {
       return options.handler({ request, event, next, context });
+    }
+
+    return next(request);
+  };
+};
+
+/** @internal Merges the `Context` types of every proxy in a tuple into a single intersection type. */
+type MergeProxyContexts<Proxies extends Proxy[]> = UnionToIntersection<InferProxyContext<Proxies[number]>> extends Record<string, unknown>
+  ? UnionToIntersection<InferProxyContext<Proxies[number]>>
+  : {};
+
+/**
+ * Options accepted by {@link defineProxy.chain}.
+ *
+ * @template Proxies - Tuple of {@link Proxy} types that form the chain.
+ */
+export type DefineProxyChainOptions<Proxies extends Proxy[]> = {
+  /** Ordered a list of proxies to execute. They run left-to-right; each receives the next proxy as its `next` argument. */
+  proxies: Proxies;
+  /**
+   * Optional predicate that gates the entire chain.
+   *
+   * When omitted, the chain always runs.
+   * When provided and returning `false`, the request is passed directly to `next` without invoking any proxy.
+   */
+  filter?: (options: ProxyFilterOptions<MergeProxyContexts<Proxies>>) => boolean;
+};
+
+/**
+ * Composes multiple proxies into an ordered pipeline that shares a single context object.
+ *
+ * Proxies execute in the order they appear in `options.proxies` (left-to-right).
+ * Each proxy receives the following proxy in the array as its `next` function, so calling
+ * `next(request)` inside a handler passes control to the next proxy in the chain.
+ * The last proxy's `next` resolves to the `next` argument supplied when the chain is invoked
+ * (defaulting to {@link NextResponse.next}).
+ *
+ * The merged `Context` type is the intersection of every individual proxy's `Context`,
+ * making data written by an upstream proxy available to all downstream proxies.
+ *
+ * @template Proxies - Tuple of {@link Proxy} types that form the pipeline.
+ *
+ * @param options - Proxies to chain and an optional gate filter.
+ * @returns A {@link Proxy} whose context is the intersection of all chained proxies' contexts.
+ *
+ * @example
+ * ```ts
+ * import { defineProxy } from '@praha/next-proxy';
+ *
+ * type AuthContext = { userId: string };
+ *
+ * const authProxy = defineProxy<AuthContext>({
+ *   handler: ({ request, next, context }) => {
+ *     context.userId = resolveUserId(request);
+ *     return next(request);
+ *   },
+ * });
+ *
+ * const loggingProxy = defineProxy({
+ *   handler: ({ request, next }) => {
+ *     console.log(request.nextUrl.pathname);
+ *     return next(request);
+ *   },
+ * });
+ *
+ * // In Next.js proxy.ts:
+ * export const proxy = defineProxy.chain({
+ *   filter: ({ request, helpers }) => helpers.matches(request, /^\/api\//),
+ *   proxies: [authProxy, loggingProxy],
+ * });
+ * ```
+ */
+defineProxy.chain = <Proxies extends Proxy[]>(options: DefineProxyChainOptions<Proxies>): Proxy<MergeProxyContexts<Proxies>> => {
+  return async ({ request, event, next = defaultNext, context = {} }) => {
+    if (!options.filter || options.filter({ request, event, context, helpers })) {
+      const chain = options.proxies.reduceRight<ProxyNext>((next, proxy) => {
+        return (request) => proxy({ request, event, next, context });
+      }, next);
+
+      return await chain(request);
     }
 
     return next(request);
