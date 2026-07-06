@@ -56,7 +56,7 @@ const apiProxy = defineProxy({
   filter: ({ request, helpers }) =>
     helpers.path.matches(request, ['/login', /^\/public\//]),
   handler: ({ request, next }) => {
-    // only runs for /api/* routes
+    // only runs for /login and /public/* routes
     return next(request);
   },
 });
